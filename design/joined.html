@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pristup</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Joinao si se</h1>
+    <p id="server-name"></p>
+    <button id="ready-btn" class="join-btn">Spreman</button>
+  </div>
+
+  <script>
+    // Dohvaćanje imena servera iz URL parametra
+    const params = new URLSearchParams(window.location.search);
+    const serverName = params.get("server");
+
+    if (serverName) {
+      document.getElementById("server-name").textContent = "Server: " + decodeURIComponent(serverName);
+    } else {
+      document.getElementById("server-name").textContent = "Nije specificiran server.";
+    }
+  </script>
+</body>
+</html>

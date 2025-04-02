@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lobby</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Lobby</h1>
+  <div class="container">
+    <p id="waiting-msg">U lobiju čekaš da se pridruži još jedan igrač...</p>
+    <form id="lobby-form">
+      <label for="server-name">Ime Servera:</label>
+      <input type="text" id="server-name" name="server-name" required>
+
+      <label for="locked">
+        <input type="checkbox" id="locked" name="locked">
+        Zaključan
+      </label>
+
+      <div id="password-container" style="display: none;">
+        <label for="password">Šifra:</label>
+        <input type="password" id="password" name="password">
+      </div>
+
+      <div class="button-group">
+        <button type="submit" class="submit-btn">Spremi promjene</button>
+        <button type="button" id="leave-btn" class="submit-btn" style="background-color: #dc3545;">Napusti Lobby</button>
+      </div>
+    </form>
+    <!-- Tipka za pokretanje igre (trenutno bez funkcionalnosti) -->
+    <button id="start-game-btn" class="submit-btn" style="width:100%; margin-top: 20px;">Pokreni igru</button>
+  </div>
+
+  <script>
+    // Funkcija za dohvaćanje URL parametra
+    function getQueryParam(param) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(param);
+    }
+
+    const serverId = getQueryParam("serverId");
+
+    if (!serverId) {
+      alert("Nije pronađen server. Preusmjeravam na početnu stranicu.");
+      window.location.href = "index.html";
+    }
+
+    // Učitavanje korisnički kreiranih servera iz localStorage
+    let userServers = [];
+    if (localStorage.getItem("userServers")) {
+      try {
+        userServers = JSON.parse(localStorage.getItem("userServers"));
+      } catch (e) {
+        console.error("Error parsing userServers", e);
+      }
+    }
+
+    // Pronađi server s odgovarajućim ID-em
+    let currentServer = userServers.find(s => s.id === serverId);
+
+    if (!currentServer) {
+      alert("Server nije pronađen. Preusmjeravam na početnu stranicu.");
+      window.location.href = "index.html";
+    }
+
+    // Popuni formu s postojećim podacima
+    document.getElementById("server-name").value = currentServer.name;
+    document.getElementById("locked").checked = currentServer.locked;
+    if (currentServer.locked) {
+      document.getElementById("password-container").style.display = "block";
+      document.getElementById("password").value = currentServer.password || "";
+      document.getElementById("password").required = true;
+    }
+
+    // Prikazivanje/skrivanje polja za unos šifre ovisno o checkboxu
+    document.getElementById("locked").addEventListener("change", function() {
+      if (this.checked) {
+        document.getElementById("password-container").style.display = "block";
+        document.getElementById("password").required = true;
+      } else {
+        document.getElementById("password-container").style.display = "none";
+        document.getElementById("password").required = false;
+      }
+    });
+
+    // Spremanje promjena u lobby formi
+    document.getElementById("lobby-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+      // Ažuriraj podatke servera
+      currentServer.name = document.getElementById("server-name").value.trim();
+      currentServer.locked = document.getElementById("locked").checked;
+      if (currentServer.locked) {
+        const newPassword = document.getElementById("password").value;
+        if (!newPassword) {
+          alert("Unesite šifru za zaključani server.");
+          return;
+        }
+        currentServer.password = newPassword;
+      } else {
+        delete currentServer.password;
+      }
+
+      // Ažuriraj server u localStorage
+      userServers = userServers.map(s => s.id === serverId ? currentServer : s);
+      localStorage.setItem("userServers", JSON.stringify(userServers));
+      alert("Promjene spremljene!");
+    });
+
+    // Leave Lobby - briše server i preusmjerava na početnu stranicu
+    document.getElementById("leave-btn").addEventListener("click", function() {
+      if (confirm("Jeste li sigurni da želite napustiti lobby? Server će biti obrisan.")) {
+        userServers = userServers.filter(s => s.id !== serverId);
+        localStorage.setItem("userServers", JSON.stringify(userServers));
+        window.location.href = "index.html";
+      }
+    });
+
+    // Start Game tipka (trenutno bez funkcionalnosti)
+    document.getElementById("start-game-btn").addEventListener("click", function() {
+      alert("Igra je pokrenuta! (Funkcionalnost nije implementirana)");
+    });
+  </script>
+</body>
+</html>

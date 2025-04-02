@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista Servera</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Dostupni Serveri</h1>
+  <!-- Link do kreiranja novog servera -->
+  <a href="new-server.html" class="new-server-btn">Napravi novi server</a>
+  
+  <div id="server-list" class="container">
+    <!-- Dinamički generirani serveri -->
+  </div>
+
+  <script>
+    // Predefinirani server podaci
+    const defaultServers = [
+      { name: "Server 1", locked: true, password: "1234" },
+      { name: "Server 2", locked: false },
+      { name: "Hardcore Arena", locked: true, password: "arena" },
+      { name: "FunZone", locked: false }
+    ];
+
+    // Učitavanje korisnički kreiranih servera iz localStorage
+    let userServers = [];
+    if (localStorage.getItem("userServers")) {
+      try {
+        userServers = JSON.parse(localStorage.getItem("userServers"));
+      } catch (e) {
+        console.error("Error parsing userServers", e);
+      }
+    }
+
+    // Kombinacija predefiniranih i korisnički kreiranih servera
+    const servers = defaultServers.concat(userServers);
+
+    const serverList = document.getElementById("server-list");
+
+    // Dinamičko generiranje liste servera
+    servers.forEach(server => {
+      const serverDiv = document.createElement("div");
+      serverDiv.className = "server";
+
+      const infoDiv = document.createElement("div");
+      infoDiv.className = "server-info";
+
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = server.name;
+      infoDiv.appendChild(nameSpan);
+
+      const lockSpan = document.createElement("span");
+      lockSpan.className = "lock";
+      lockSpan.textContent = server.locked ? "🔒" : "🔓";
+      infoDiv.appendChild(lockSpan);
+
+      serverDiv.appendChild(infoDiv);
+
+      const joinButton = document.createElement("button");
+      joinButton.className = "join-btn";
+      joinButton.textContent = "Join";
+      joinButton.addEventListener("click", function() {
+        // Ako je server zaključan, traži se unos šifre
+        if (server.locked) {
+          const userPassword = prompt("Server je zaključan, unesite šifru:");
+          if (userPassword !== server.password) {
+            alert("Kriva šifra, pokušajte ponovno!");
+            return;
+          }
+        }
+        // Ako je server nezaključan ili je unesena ispravna šifra, preusmjeri korisnika
+        window.location.href = "joined.html?server=" + encodeURIComponent(server.name);
+      });
+      serverDiv.appendChild(joinButton);
+
+      serverList.appendChild(serverDiv);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Napravi Novi Server</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Kreiraj Novi Server</h1>
+  <div class="container">
+    <form id="new-server-form">
+      <label for="server-name">Ime Servera:</label>
+      <input type="text" id="server-name" name="server-name" required>
+
+      <label for="locked">
+        <input type="checkbox" id="locked" name="locked">
+        Zaključan
+      </label>
+
+      <div id="password-container" style="display: none;">
+        <label for="password">Šifra:</label>
+        <input type="password" id="password" name="password">
+      </div>
+
+      <button type="submit" class="submit-btn">Kreiraj Server</button>
+    </form>
+  </div>
+
+  <script>
+    const lockedCheckbox = document.getElementById("locked");
+    const passwordContainer = document.getElementById("password-container");
+
+    // Prikazivanje polja za unos šifre samo ako je server zaključan
+    lockedCheckbox.addEventListener("change", function() {
+      if (this.checked) {
+        passwordContainer.style.display = "block";
+        document.getElementById("password").required = true;
+      } else {
+        passwordContainer.style.display = "none";
+        document.getElementById("password").required = false;
+      }
+    });
+
+    document.getElementById("new-server-form").addEventListener("submit", function(e) {
+      e.preventDefault();
+
+      const serverName = document.getElementById("server-name").value.trim();
+      const locked = document.getElementById("locked").checked;
+      const password = document.getElementById("password").value;
+
+      if (!serverName) {
+        alert("Unesite ime servera.");
+        return;
+      }
+      if (locked && !password) {
+        alert("Unesite šifru za zaključani server.");
+        return;
+      }
+
+      // Kreiranje novog server objekta s jedinstvenim ID-em
+      const newServer = { 
+        id: Date.now().toString(), 
+        name: serverName, 
+        locked: locked 
+      };
+      if (locked) {
+        newServer.password = password;
+      }
+
+      // Učitavanje postojećih korisnički kreiranih servera iz localStorage
+      let userServers = [];
+      if (localStorage.getItem("userServers")) {
+        try {
+          userServers = JSON.parse(localStorage.getItem("userServers"));
+        } catch (e) {
+          console.error("Error parsing userServers", e);
+        }
+      }
+      // Dodavanje novog servera u listu
+      userServers.push(newServer);
+      localStorage.setItem("userServers", JSON.stringify(userServers));
+
+      alert("Novi server kreiran! Sada si master lobija.");
+      // Preusmjeri na lobby.html s ID-em novog servera
+      window.location.href = "lobby.html?serverId=" + encodeURIComponent(newServer.id);
+    });
+  </script>
+</body>
+</html>
