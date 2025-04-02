@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image API Client</title>
+</head>
+<body>
+    <h1>Image API Request</h1>
+
+    <label>IP:
+        <input type="text" id="ip" value="127.0.0.1" placeholder="e.g. 127.0.0.1">
+    </label><br>
+    <label>Private Key:
+        <input type="text" id="privateKey" value="1234" placeholder="e.g. secret123">
+    </label><br>
+
+    <label>Choose Action:
+        <select id="actionSelect" onchange="handleActionChange()">
+            <option value="">-- Select an action --</option>
+            <option value="real_image_test">Get Real Image</option>
+            <option value="pattern_image_test">Get Pattern Image</option>
+            <option value="random_image_name">Get Random Image Name</option>
+            <option value="all_image_names">Get All Image Names</option>
+        </select>
+    </label><br>
+
+    <div id="additionalInput" style="display:none;">
+        <label>Image Name:
+            <input type="text" value = "smjesko1" id="imageNameInput" placeholder="image1">
+        </label><br>
+    </div>
+
+    <button onclick="sendAction()">Send Request</button>
+
+    <pre id="output"></pre>
+    <img id="imagePreview" style="max-width: 500px; display:none;" />
+    <button onclick="sendClientAlert()">🔔 Send Alert to Admin</button>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        function sendClientAlert() {
+            const msg = prompt("Send a message to the admin:");
+            if (msg) {
+                socket.emit('client-alert', msg);
+                console.log("📤 Alert sent to admin:", msg);
+            }
+        }
+        const socket = io(window.location.origin);
+    socket.on('connect', () => console.log("Connected to WebSocket"));
+    socket.on('connect_error', err => console.error("WebSocket error:", err));
+
+    socket.on('show-alert', (msg) => {
+    console.log("🔔 Received alert from server:", msg);
+    alert("📢 ADMIN ALERT:\n\n" + msg);
+    });
+
+        const BASE_URL = "/proxy";
+
+        async function sha256(message) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+
+        function handleActionChange() {
+            const action = document.getElementById("actionSelect").value;
+            const showInput = (action === "real_image_test" || action === "pattern_image_test");
+            document.getElementById("additionalInput").style.display = showInput ? "block" : "none";
+        }
+
+        async function sendAction() {
+            const ip = document.getElementById("ip").value;
+            const privateKey = document.getElementById("privateKey").value;
+            const imageName = document.getElementById("imageNameInput").value;
+            const action = document.getElementById("actionSelect").value;
+            const output = document.getElementById("output");
+            const img = document.getElementById("imagePreview");
+
+            output.textContent = "";
+            img.style.display = "none";
+
+            if (!ip || !privateKey || !action) {
+                output.textContent = "Please fill in IP, Private Key, and select an action.";
+                return;
+            }
+
+            const hashed = await sha256(ip + privateKey);
+            const payload = { auth: hashed };
+
+            let endpoint = "";
+
+            switch (action) {
+                case "real_image_test":
+                    if (!imageName) {
+                        output.textContent = "Please enter an image name.";
+                        return;
+                    }
+                    payload.file = imageName;
+                    endpoint = "/get-real-image";
+                    break;
+                case "pattern_image_test":
+                    if (!imageName) {
+                        output.textContent = "Please enter an image name.";
+                        return;
+                    }
+                    payload.file = imageName;
+                    endpoint = "/get-pattern-image";
+                    break;
+                case "random_image_name":
+                    endpoint = "/get-random-image-name";
+                    break;
+                case "all_image_names":
+                    endpoint = "/get-all-image-names";
+                    break;
+                default:
+                    output.textContent = "Invalid action selected.";
+                    return;
+            }
+
+            try {
+                const response = await fetch(BASE_URL + endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+
+                const contentType = response.headers.get("content-type");
+
+                if (response.ok) {
+                    if (contentType && contentType.startsWith("image/")) {
+                        const blob = await response.blob();
+                        img.src = URL.createObjectURL(blob);
+                        img.style.display = "block";
+                    } else {
+                        const json = await response.json();
+                        output.textContent = JSON.stringify(json.data, null, 2);
+                    }
+                } else {
+                    const error = await response.json();
+                    output.textContent = "Error: " + JSON.stringify(error);
+                }
+            } catch (err) {
+                output.textContent = "Fetch error: " + err.message;
+            }
+        }
+    </script>
+</body>
+</html>

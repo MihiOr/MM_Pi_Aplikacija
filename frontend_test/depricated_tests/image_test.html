@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Zooming External SVG</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        #svg-container {
+            width: 500px;
+            height: 500px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #svg-object {
+            width: 100%;
+            height: 100%;
+            animation: zoomPulse 3s ease-in-out forwards;
+            transform-origin: center;
+        }
+
+        @keyframes zoomPulse {
+            0%   { transform: scale(1); }
+            100% { transform: scale(7.0); }
+        }
+    </style>
+</head>
+<body>
+    <object id="svg-object" type="image/svg+xml" data="Cleaned_Pi_Final.svg"></object>
+</body>
+</html>
