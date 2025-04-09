@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista Servera</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Dostupni Serveri</h1>
+  <label>Vaše ime: <input id="username" /></label>
+  <a href="new-server.html" class="new-server-btn">Napravi novi server</a>
+
+  <div id="server-list" class="container"></div>
+  <script src="config.js"></script>
+  <script>
+    let CLIENT_ID = localStorage.getItem("client_id");
+    if (!CLIENT_ID) {
+      CLIENT_ID = crypto.randomUUID();
+      localStorage.setItem("client_id", CLIENT_ID);
+    }
+    let API=config.apiBaseUrl;
+    
+
+    const usernameInput = document.getElementById("username");
+    usernameInput.value = localStorage.getItem("username") || "";
+    usernameInput.addEventListener("input", () => {
+      localStorage.setItem("username", usernameInput.value.trim());
+    });
+
+    async function fetchServers() {
+      const res = await fetch(`${API}/servers`);
+      const servers = await res.json();
+      const list = document.getElementById("server-list");
+      list.innerHTML = "";
+
+      servers.forEach(server => {
+        const serverDiv = document.createElement("div");
+        serverDiv.className = "server";
+
+        const infoDiv = document.createElement("div");
+        infoDiv.className = "server-info";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = server.name;
+        infoDiv.appendChild(nameSpan);
+
+        const lockSpan = document.createElement("span");
+        lockSpan.className = "lock";
+        lockSpan.textContent = server.open ? "🔓" : "🔒";
+        infoDiv.appendChild(lockSpan);
+
+        serverDiv.appendChild(infoDiv);
+
+        const joinButton = document.createElement("button");
+        joinButton.className = "join-btn";
+        joinButton.textContent = "Join";
+        joinButton.onclick = async () => {
+          const name = localStorage.getItem("username") || "";
+          if (!name) return alert("Unesite svoje ime prije ulaska u server.");
+
+          let password = "";
+          if (!server.open) {
+            password = prompt("Server je zaključan. Unesite šifru:");
+            if (password === null) return;
+          }
+
+          const res = await fetch(`${API}/join-server`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-safe": "1" },
+            body: JSON.stringify({ server_id: server.id, password, username: localStorage.getItem("username"), client_id: CLIENT_ID })
+          });
+
+          if (!res.ok) {
+            alert("Pristup odbijen! Provjeri šifru.");
+            return;
+          }
+
+          window.location.href = `joined.html?serverId=${encodeURIComponent(server.id)}&name=${encodeURIComponent(server.name)}&user=${encodeURIComponent(name)}`;
+        };
+        serverDiv.appendChild(joinButton);
+        list.appendChild(serverDiv);
+      });
+    }
+
+    fetchServers();
+    setInterval(fetchServers, 3000);
+  </script>
+</body>
+</html>

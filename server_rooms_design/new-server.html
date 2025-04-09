@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Napravi Novi Server</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <h1>Kreiraj Novi Server</h1>
+  <div class="container">
+    <form id="new-server-form">
+      <label for="server-name">Ime Servera:</label>
+      <input type="text" id="server-name" required>
+
+      <label>
+        <input type="checkbox" id="locked"> Zaključan
+      </label>
+
+      <div id="password-container" style="display:none;">
+        <label for="password">Šifra:</label>
+        <input type="password" id="password">
+      </div>
+
+      <button type="submit" class="submit-btn">Kreiraj Server</button>
+    </form>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    let CLIENT_ID = localStorage.getItem("client_id");
+    if (!CLIENT_ID) {
+      CLIENT_ID = crypto.randomUUID();
+      localStorage.setItem("client_id", CLIENT_ID);
+    }
+    let API=config.apiBaseUrl;
+
+    document.getElementById("locked").addEventListener("change", function () {
+      document.getElementById("password-container").style.display = this.checked ? "block" : "none";
+      document.getElementById("password").required = this.checked;
+    });
+
+    document.getElementById("new-server-form").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const name = document.getElementById("server-name").value.trim();
+      const locked = document.getElementById("locked").checked;
+      const password = document.getElementById("password").value;
+      const user = localStorage.getItem("username") || "";
+
+      if (!user) return alert("Unesite svoje ime u početnom ekranu prije kreiranja servera.");
+
+      const res = await fetch(`${API}/create-server`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-safe": "1" },
+        body: JSON.stringify({ name, password: locked ? password : "", username: localStorage.getItem("username"), open: !locked, client_id: CLIENT_ID })
+      });
+
+      const data = await res.json();
+      window.location.href = `joined.html?serverId=${data.server_id}&name=${encodeURIComponent(name)}&user=${encodeURIComponent(user)}`;
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1 id="title"></h1>
+
+    <div id="admin-panel" style="display: none; margin-bottom: 20px;">
+      <h3>Admin Panel</h3>
+      <label>Novo ime servera: <input id="new-name" /></label><br />
+      <label>Nova šifra: <input id="new-password" /></label><br />
+      <label><input type="checkbox" id="lock-toggle" /> Zaključaj</label><br />
+      <button onclick="updateServer()">Spremi Promjene</button>
+    </div>
+
+    <div id="chat-box" style="border:1px solid #ccc;height:200px;overflow-y:auto;margin-bottom:10px;"></div>
+    <input id="chat-input" placeholder="Poruka..." />
+    <button onclick="send()">Pošalji</button>
+    <button onclick="leave()">Izađi</button>
+  </div>
+
+  <script src="config.js"></script>
+  <script>
+    let CLIENT_ID = localStorage.getItem("client_id");
+    if (!CLIENT_ID) {
+      CLIENT_ID = crypto.randomUUID();
+      localStorage.setItem("client_id", CLIENT_ID);
+    }
+    let API=config.apiBaseUrl;
+
+    const params = new URLSearchParams(location.search);
+    const serverId = params.get("serverId");
+    const serverName = decodeURIComponent(params.get("name") || "");
+    const username = decodeURIComponent(params.get("user") || "Anonymous");
+
+    const title = document.getElementById("title");
+    const chatBox = document.getElementById("chat-box");
+    const input = document.getElementById("chat-input");
+
+    title.textContent = "Povezan sa: " + serverName;
+
+    const ws = new WebSocket(`${API.replace(/^http/, 'ws')}/ws/${serverId}/${CLIENT_ID}/${encodeURIComponent(username)}`);
+
+    ws.onmessage = (event) => {
+      if (event.data === "DISCONNECT") {
+        alert("Server je ugašen od strane admina.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      let data;
+      try {
+        data = JSON.parse(event.data);
+      } catch {
+        console.warn("Neispravan WS podatak:", event.data);
+        return;
+      }
+
+      if (data.type === "pong") return;
+
+      if (data.type === "chat") {
+        const msg = document.createElement("div");
+        msg.textContent = data.text;
+        chatBox.appendChild(msg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      if (data.type === "event") {
+        if (data.event === "join") {
+          printInfo(`🟢 ${data.user} se pridružio serveru.`);
+        } else if (data.event === "leave") {
+          printInfo(`🔴 ${data.user} je napustio server.`);
+        }
+      }
+    };
+
+    function printInfo(message) {
+      const line = document.createElement("div");
+      line.textContent = message;
+      line.style.fontStyle = "italic";
+      line.style.color = "#555";
+      chatBox.appendChild(line);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function send() {
+      const text = input.value.trim();
+      if (text && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "chat", text: `${username}: ${text}` }));
+        input.value = "";
+      }
+    }
+
+    async function leave() {
+      await fetch(`${API}/leave-server`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-safe": "1"
+        },
+        body: JSON.stringify({
+          server_id: serverId,
+          client_id: CLIENT_ID
+        })
+      });
+      ws?.close();
+      window.location.href = "index.html";
+    }
+
+    async function checkAdmin() {
+      const res = await fetch(`${API}/my-role`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-safe": "1"
+        },
+        body: JSON.stringify({ server_id: serverId, client_id: CLIENT_ID })
+      });
+
+      const data = await res.json();
+      if (data.is_admin) {
+        document.getElementById("admin-panel").style.display = "block";
+      }
+    }
+
+    async function updateServer() {
+      const newName = document.getElementById("new-name").value;
+      const newPassword = document.getElementById("new-password").value;
+      const locked = document.getElementById("lock-toggle").checked;
+
+      const res = await fetch(`${API}/update-server`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-safe": "1"
+        },
+        body: JSON.stringify({
+          server_id: serverId,
+          name: newName,
+          password: newPassword,
+          open: !locked,
+          client_id: CLIENT_ID
+        })
+      });
+
+      if (res.ok) {
+        alert("Postavke servera su ažurirane.");
+      } else {
+        alert("Greška prilikom spremanja postavki.");
+      }
+    }
+
+    checkAdmin();
+
+    setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "ping" }));
+      } else if (ws.readyState === WebSocket.CLOSED) {
+        alert("Veza sa serverom je izgubljena.");
+        window.location.href = "index.html";
+      }
+    }, 10000);
+  </script>
+</body>
+</html>
